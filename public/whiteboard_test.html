@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Whiteboard Room</title>
+
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+
+  <link rel="stylesheet" href="/css/chat.css">
+
+  <style>
+    #topBar {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 9999;
+      color: white;
+      font-family: Arial, sans-serif;
+      background: rgba(0,0,0,0.7);
+      padding: 8px;
+    }
+
+    #whiteboardPanel {
+      position: fixed;
+      top: 70px;
+      left: 10px;
+      z-index: 9999;
+      background: rgba(255,255,255,0.95);
+      border: 2px solid #333;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+
+    #board {
+      display: block;
+      background: white;
+      border: 1px solid #333;
+      cursor: crosshair;
+    }
+
+    #tools {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="topBar">
+  <button onclick="window.location.href='/index.html'">Back to Lobby</button>
+  <span id="userInfo">Loading...</span>
+</div>
+
+<div id="whiteboardPanel">
+  <canvas id="board" width="700" height="400"></canvas>
+
+  <div id="tools">
+    <label>Color:</label>
+    <input id="penColor" type="color" value="#000000">
+
+    <label>Size:</label>
+    <input id="penSize" type="range" min="1" max="12" value="3">
+
+    <button id="clearBoard">Clear</button>
+  </div>
+</div>
+
+<a-scene background="color:#111827">
+
+  <a-entity id="player"
+            position="0 1.6 4"
+            wasd-controls="acceleration:20"
+            look-controls>
+    <a-entity camera position="0 0 0">
+      
+    </a-entity>
+  </a-entity>
+
+  <a-plane position="0 0 0"
+           rotation="-90 0 0"
+           width="16"
+           height="16"
+           color="#374151">
+  </a-plane>
+
+  <a-box position="0 3 -8" width="16" height="6" depth="0.2" color="#4b5563"></a-box>
+  <a-box position="0 3 8" width="16" height="6" depth="0.2" color="#4b5563"></a-box>
+  <a-box position="-8 3 0" width="0.2" height="6" depth="16" color="#4b5563"></a-box>
+  <a-box position="8 3 0" width="0.2" height="6" depth="16" color="#4b5563"></a-box>
+
+  <a-plane position="0 6 0"
+           rotation="90 0 0"
+           width="16"
+           height="16"
+           color="#1f2937">
+  </a-plane>
+
+  <a-text value="WHITEBOARD ROOM"
+          align="center"
+          position="0 5.2 -7.7"
+          width="8"
+          color="white">
+  </a-text>
+
+  <a-box position="0 2.8 -7.75"
+         width="7.4"
+         height="4.2"
+         depth="0.1"
+         color="#ffffff">
+  </a-box>
+
+  <a-text value="Use the 2D whiteboard panel on the left"
+          align="center"
+          position="0 0.7 -7.6"
+          width="6"
+          color="white">
+  </a-text>
+
+  <a-light type="ambient" intensity="0.8"></a-light>
+  <a-light type="point" position="0 4 0" intensity="1.2"></a-light>
+
+</a-scene>
+
+<script>
+window.socket = io();
+const socket = window.socket;
+
+let currentUser = null;
+
+fetch("/me")
+  .then(res => res.json())
+  .then(user => {
+    currentUser = user;
+    document.getElementById("userInfo").innerHTML =
+      " " + user.name + " / " + user.role;
+  });
+</script>
+
+<script>
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+
+const penColor = document.getElementById("penColor");
+const penSize = document.getElementById("penSize");
+const clearBoard = document.getElementById("clearBoard");
+
+let drawing = false;
+let lastX = 0;
+let lastY = 0;
+
+function drawLine(line) {
+  ctx.beginPath();
+  ctx.moveTo(line.x1, line.y1);
+  ctx.lineTo(line.x2, line.y2);
+  ctx.strokeStyle = line.color;
+  ctx.lineWidth = line.size;
+  ctx.lineCap = "round";
+  ctx.stroke();
+}
+
+canvas.addEventListener("mousedown", e => {
+  drawing = true;
+
+  const rect = canvas.getBoundingClientRect();
+  lastX = e.clientX - rect.left;
+  lastY = e.clientY - rect.top;
+});
+
+canvas.addEventListener("mousemove", e => {
+  if (!drawing) return;
+
+  const rect = canvas.getBoundingClientRect();
+
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  const line = {
+    x1: lastX,
+    y1: lastY,
+    x2: x,
+    y2: y,
+    color: penColor.value,
+    size: Number(penSize.value)
+  };
+
+  drawLine(line);
+  socket.emit("whiteboardDraw", line);
+
+  lastX = x;
+  lastY = y;
+});
+
+canvas.addEventListener("mouseup", () => {
+  drawing = false;
+});
+
+canvas.addEventListener("mouseleave", () => {
+  drawing = false;
+});
+
+clearBoard.onclick = () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  socket.emit("whiteboardClear");
+};
+
+socket.on("whiteboardHistory", history => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  history.forEach(drawLine);
+});
+
+socket.on("whiteboardDraw", line => {
+  drawLine(line);
+});
+
+socket.on("whiteboardClear", () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+});
+</script>
+
+<script src="/js/chat.js"></script>
+
+</body>
+</html>

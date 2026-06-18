@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Metaverse Lobby</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="/css/chat.css">
+
+</head>
+
+<body>
+
+<form method="post" action="/logout"
+      style="position:absolute; z-index:10; top:10px; right:10px;">
+  <button type="submit">Logout</button>
+</form>
+
+<div id="userInfo"
+     style="position:absolute; z-index:10; top:10px; left:10px; color:white; font-family:Arial; background:rgba(0,0,0,0.5); padding:8px;">
+  Loading user...
+</div>
+
+<a-scene background="color:#001133">
+
+  <a-entity id="player"
+            position="0 1.6 4"
+            wasd-controls="acceleration:20"
+            look-controls
+            lobby-limit>
+    <a-entity camera position="0 0 0">
+       <a-cursor color="#ffffff"></a-cursor>
+    </a-entity>
+  </a-entity>
+
+  <a-plane position="0 0 0"
+           rotation="-90 0 0"
+           width="16"
+           height="16"
+           color="#2d3748">
+  </a-plane>
+
+  <a-plane position="0 6 0"
+         rotation="90 0 0"
+         width="16"
+         height="16"
+         color="#111827">
+</a-plane>
+
+<a-box position="0 3 -8" width="16" height="6" depth="0.2" color="#4a5568"></a-box>
+<a-box position="0 3 8" width="16" height="6" depth="0.2" color="#4a5568"></a-box>
+<a-box position="-8 3 0" width="0.2" height="6" depth="16" color="#4a5568"></a-box>
+<a-box position="8 3 0" width="0.2" height="6" depth="16" color="#4a5568"></a-box>
+
+  <a-text value="METAVERSE LOBBY"
+          align="center"
+          position="0 5.3 -7.7"
+          width="8"
+          color="white">
+  </a-text>
+
+  <a-box position="0 0.6 -4"
+         width="4"
+         height="1.2"
+         depth="1"
+         color="#2563eb">
+  </a-box>
+
+
+<!-- KING NIKOLA PORTRAIT -->
+
+<!-- SLIKA -->
+<a-plane position="0 3.35 -7.78"
+         width="1.45"
+         height="1.75"
+         src="/assets/king.jpg">
+</a-plane>
+
+<!-- RAM GORE -->
+<a-box position="0 4.28 -7.84"
+       width="1.62"
+       height="0.08"
+       depth="0.06"
+       color="#d4af37">
+</a-box>
+
+<!-- RAM DOLE -->
+<a-box position="0 2.42 -7.84"
+       width="1.62"
+       height="0.08"
+       depth="0.06"
+       color="#d4af37">
+</a-box>
+
+<!-- RAM LEVO -->
+<a-box position="-0.81 3.35 -7.84"
+       width="0.08"
+       height="1.92"
+       depth="0.06"
+       color="#d4af37">
+</a-box>
+
+<!-- RAM DESNO -->
+<a-box position="0.81 3.35 -7.84"
+       width="0.08"
+       height="1.92"
+       depth="0.06"
+       color="#d4af37">
+</a-box>
+
+<!-- TABLICA -->
+<a-box position="0 2.12 -7.83"
+       width="1.3"
+       height="0.22"
+       depth="0.06"
+       color="#8b5a2b">
+</a-box>
+
+<a-text value="KING NIKOLA"
+        align="center"
+        position="0 2.14 -7.74"
+        width="4"
+        color="white">
+</a-text>
+
+
+  <a-text value="INFO DESK"
+          align="center"
+          position="0 1.5 -3.45"
+          width="4"
+          color="white">
+  </a-text>
+
+  <!-- ===================================== -->
+<!-- WHITEBOARD ROOM DOOR -->
+<!-- ===================================== -->
+
+<!-- VRATA -->
+<a-box position="6 2.4 -7.7"
+       width="2.2"
+       height="4.8"
+       depth="0.15"
+       color="#0f766e">
+</a-box>
+
+<!-- LEVI OKVIR -->
+<a-box position="4.85 2.4 -7.72"
+       width="0.12"
+       height="5.0"
+       depth="0.25"
+       color="#374151">
+</a-box>
+
+<!-- DESNI OKVIR -->
+<a-box position="7.15 2.4 -7.72"
+       width="0.12"
+       height="5.0"
+       depth="0.25"
+       color="#374151">
+</a-box>
+
+<!-- GORNJI OKVIR -->
+<a-box position="6 4.9 -7.72"
+       width="2.42"
+       height="0.12"
+       depth="0.25"
+       color="#374151">
+</a-box>
+
+<!-- KVAKA -->
+<a-sphere position="6.75 2.3 -7.55"
+          radius="0.08"
+          color="#fbbf24">
+</a-sphere>
+
+<!-- NASLOV -->
+<a-text value="WHITEBOARD ROOM"
+        align="center"
+        position="6 4.2 -7.55"
+        width="3"
+        color="white">
+</a-text>
+
+<!-- IKONICA VRATA -->
+<a-text value="🚪"
+        align="center"
+        position="6 2.7 -7.54"
+        width="4"
+        color="white">
+</a-text>
+
+<!-- KLIK ZONA -->
+<a-plane id="whiteboardDoorClick"
+         position="6 2.4 -7.45"
+         width="2.2"
+         height="4.8"
+         material="opacity:0; transparent:true">
+</a-plane>
+
+<!-- ===================================== -->
+
+  <a-light type="ambient" intensity="0.7"></a-light>
+  <a-light type="point" position="0 3 0" intensity="1.2"></a-light>
+
+</a-scene>
+
+<script>
+fetch("/me")
+  .then(res => res.json())
+  .then(user => {
+    document.getElementById("userInfo").innerHTML =
+      "<b>" + user.name + "</b><br>Role: " + user.role;
+  });
+</script>
+
+<script>
+AFRAME.registerComponent("lobby-limit", {
+  tick: function () {
+    const p = this.el.object3D.position;
+
+    if (p.x < -7.5) p.x = -7.5;
+    if (p.x >  7.5) p.x =  7.5;
+    if (p.z < -7.5) p.z = -7.5;
+    if (p.z >  7.5) p.z =  7.5;
+
+    p.y = 1.6;
+  }
+});
+</script>
+
+<script>
+window.socket = io();
+const socket = window.socket;
+
+socket.on("connect", () => {
+  console.log("Connected:", socket.id);
+});
+
+setInterval(() => {
+  const player = document.querySelector("#player");
+  if (!player) return;
+
+  const pos = player.object3D.position;
+  const rot = player.object3D.rotation;
+
+  socket.emit("playerMove", {
+    x: pos.x,
+    y: pos.y,
+    z: pos.z,
+    ry: THREE.MathUtils.radToDeg(rot.y)
+  });
+}, 100);
+
+socket.on("current-users", users => {
+  Object.keys(users).forEach(id => {
+    if (id === socket.id) return;
+    createAvatar(id, users[id]);
+  });
+});
+
+
+
+socket.on("user-connected", user => {
+  createAvatar(user.id, user);
+});
+
+socket.on("playerMoved", user => {
+  let avatar = document.getElementById("avatar-" + user.id);
+
+  if (!avatar) {
+    createAvatar(user.id, user);
+    avatar = document.getElementById("avatar-" + user.id);
+  }
+
+  avatar.setAttribute("position", `${user.x} 0 ${user.z}`);
+  avatar.setAttribute("rotation", `0 ${user.ry} 0`);
+});
+
+socket.on("user-disconnected", id => {
+  const avatar = document.getElementById("avatar-" + id);
+  if (avatar) avatar.remove();
+});
+
+function createAvatar(id, user) {
+  if (document.getElementById("avatar-" + id)) return;
+
+  const avatar = document.createElement("a-entity");
+  avatar.setAttribute("id", "avatar-" + id);
+  avatar.setAttribute("position", `${user.x} 0 ${user.z}`);
+  avatar.setAttribute("rotation", `0 ${user.ry} 0`);
+
+  avatar.innerHTML = `
+    <a-cylinder position="0 0.8 0" radius="0.28" height="1.2" color="${user.color}"></a-cylinder>
+    <a-sphere position="0 1.55 0" radius="0.32" color="#facc15"></a-sphere>
+    <a-cylinder position="-0.38 0.85 0" radius="0.08" height="0.8" rotation="0 0 20" color="${user.color}"></a-cylinder>
+    <a-cylinder position="0.38 0.85 0" radius="0.08" height="0.8" rotation="0 0 -20" color="${user.color}"></a-cylinder>
+    <a-text value="${user.name}" align="center" position="0 2.15 0" color="white" width="3"></a-text>
+  `;
+
+  document.querySelector("a-scene").appendChild(avatar);
+}
+</script>
+
+<script src="/js/chat.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const door = document.getElementById("whiteboardDoorClick");
+
+  if (door) {
+    door.addEventListener("click", () => {
+      window.location.href = "rooms/whiteboard/whiteboard.html";
+    });
+  }
+});
+</script>
+</body>
+</html>
