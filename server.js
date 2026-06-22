@@ -65,6 +65,7 @@ app.get("/", (req, res) => {
   if (!req.session.user) {
     return res.redirect("/login.html");
   }
+
   res.redirect("/index.html");
 });
 
@@ -104,11 +105,25 @@ app.post("/logout", (req, res) => {
 });
 
 app.use("/index.html", requireLogin);
+app.use("/rooms", requireLogin);
+
 app.use(express.static(path.join(__dirname, "public")));
 
 io.engine.use(sessionMiddleware);
 
 const connectedUsers = {};
+
+function getUsersInRoom(roomName) {
+  const usersInRoom = {};
+
+  Object.keys(connectedUsers).forEach(id => {
+    if (connectedUsers[id].room === roomName) {
+      usersInRoom[id] = connectedUsers[id];
+    }
+  });
+
+  return usersInRoom;
+}
 
 io.on("connection", socket => {
   const session = socket.request.session;
@@ -120,69 +135,90 @@ io.on("connection", socket => {
 
   const user = session.user;
 
-  
-
   connectedUsers[socket.id] = {
     id: socket.id,
     name: user.name,
     role: user.role,
     color: user.color,
+    room: "lobby",
     x: 0,
     y: 1.6,
     z: 4,
     ry: 0
   };
-  
-  socket.emit("current-users", connectedUsers);
+
+  socket.join("lobby");
+
+  //socket.emit("current-users", getUsersInRoom("lobby"));
   socket.emit("chatHistory", chatHistory);
   socket.emit("whiteboardHistory", whiteboardHistory);
 
-  socket.broadcast.emit("user-connected", connectedUsers[socket.id]);
+  socket.to("lobby").emit("user-connected", connectedUsers[socket.id]);
 
-socket.on("chatMessage", message => {
+  socket.on("joinRoom", roomName => {
+    if (!connectedUsers[socket.id]) return;
 
-  if (!connectedUsers[socket.id]) return;
-  if (!message) return;
+    const oldRoom = connectedUsers[socket.id].room || "lobby";
+    const newRoom = roomName || "lobby";
 
-  const cleanMessage = String(message)
-    .trim()
-    .substring(0, 300);
+    socket.leave(oldRoom);
+    socket.to(oldRoom).emit("user-disconnected", socket.id);
 
-  if (!cleanMessage) return;
+    socket.join(newRoom);
 
-  const chatData = {
-    user: user.name,
-    role: user.role,
-    color: user.color,
-    message: cleanMessage,
-    time: new Date().toISOString()
-  };
+    connectedUsers[socket.id].room = newRoom;
+    connectedUsers[socket.id].x = 0;
+    connectedUsers[socket.id].y = 1.6;
+    connectedUsers[socket.id].z = 4;
+    connectedUsers[socket.id].ry = 0;
 
-  chatHistory.push(chatData);
+    socket.emit("current-users", getUsersInRoom(newRoom));
+    socket.to(newRoom).emit("user-connected", connectedUsers[socket.id]);
+  });
 
-  if (chatHistory.length > MAX_CHAT_HISTORY) {
-    chatHistory.shift();
-  }
+  socket.on("chatMessage", message => {
+    if (!connectedUsers[socket.id]) return;
+    if (!message) return;
 
-  io.emit("chatMessage", chatData);
-});
+    const cleanMessage = String(message).trim().substring(0, 300);
+    if (!cleanMessage) return;
 
+    const chatData = {
+      user: user.name,
+      role: user.role,
+      color: user.color,
+      message: cleanMessage,
+      time: new Date().toISOString()
+    };
+
+    chatHistory.push(chatData);
+
+    if (chatHistory.length > MAX_CHAT_HISTORY) {
+      chatHistory.shift();
+    }
+
+    io.emit("chatMessage", chatData);
+  });
 
   socket.on("playerMove", data => {
     if (!connectedUsers[socket.id]) return;
 
-    connectedUsers[socket.id].x = data.x;
-    connectedUsers[socket.id].y = data.y;
-    connectedUsers[socket.id].z = data.z;
-    connectedUsers[socket.id].ry = data.ry;
+    connectedUsers[socket.id].x = Number(data.x) || 0;
+    connectedUsers[socket.id].y = Number(data.y) || 1.6;
+    connectedUsers[socket.id].z = Number(data.z) || 4;
+    connectedUsers[socket.id].ry = Number(data.ry) || 0;
 
-    socket.broadcast.emit("playerMoved", connectedUsers[socket.id]);
+    const room = connectedUsers[socket.id].room || "lobby";
+
+    socket.to(room).emit("playerMoved", connectedUsers[socket.id]);
   });
+
   socket.on("whiteboardDraw", line => {
     if (!connectedUsers[socket.id]) return;
     if (!line) return;
 
     const drawData = {
+      type: "line",
       x1: Number(line.x1),
       y1: Number(line.y1),
       x2: Number(line.x2),
@@ -200,21 +236,43 @@ socket.on("chatMessage", message => {
     socket.broadcast.emit("whiteboardDraw", drawData);
   });
 
+  socket.on("whiteboardText", data => {
+    if (!connectedUsers[socket.id]) return;
+    if (!data) return;
+
+    const textData = {
+      type: "text",
+      text: String(data.text || "").trim().substring(0, 120),
+      x: Number(data.x),
+      y: Number(data.y),
+      color: data.color || "#000000",
+      size: Number(data.size) || 28
+    };
+
+    if (!textData.text) return;
+
+    whiteboardHistory.push(textData);
+
+    if (whiteboardHistory.length > MAX_WHITEBOARD_HISTORY) {
+      whiteboardHistory.shift();
+    }
+
+    io.emit("whiteboardText", textData);
+  });
+
   socket.on("whiteboardClear", () => {
     if (!connectedUsers[socket.id]) return;
-
-    const currentUser = connectedUsers[socket.id];
-
-    if (currentUser.role !== "admin" && currentUser.role !== "teacher") {
-      return;
-    }
 
     whiteboardHistory.length = 0;
     io.emit("whiteboardClear");
   });
+
   socket.on("disconnect", () => {
-    delete connectedUsers[socket.id];
-    socket.broadcast.emit("user-disconnected", socket.id);
+    if (connectedUsers[socket.id]) {
+      const room = connectedUsers[socket.id].room || "lobby";
+      delete connectedUsers[socket.id];
+      socket.to(room).emit("user-disconnected", socket.id);
+    }
   });
 });
 

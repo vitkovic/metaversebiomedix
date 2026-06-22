@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Meeting Room</title>
+
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+
+  <link rel="stylesheet" href="/css/chat.css">
+</head>
+
+<body>
+
+<div style="position:absolute; z-index:10; top:10px; left:10px; color:white; font-family:Arial; background:rgba(0,0,0,0.6); padding:8px;">
+  <button onclick="window.location.href='/index.html'">Back to Lobby</button>
+  <span id="userInfo"> Loading...</span>
+</div>
+
+<a-scene background="color:#111827">
+
+  <a-assets>
+    <video id="meetingVideo"
+           src="/assets/femur.mp4"
+           loop
+           muted
+           playsinline
+           preload="auto">
+    </video>
+  </a-assets>
+
+  <a-entity id="player"
+            position="0 1.6 5"
+            wasd-controls="acceleration:20"
+            look-controls>
+    <a-entity camera position="0 0 0"></a-entity>
+  </a-entity>
+
+  <a-plane position="0 0 0"
+           rotation="-90 0 0"
+           width="16"
+           height="16"
+           color="#374151">
+  </a-plane>
+
+  <a-plane position="0 6 0"
+           rotation="90 0 0"
+           width="16"
+           height="16"
+           color="#1f2937">
+  </a-plane>
+
+  <a-box position="0 3 -8" width="16" height="6" depth="0.2" color="#4b5563"></a-box>
+  <a-box position="0 3 8" width="16" height="6" depth="0.2" color="#4b5563"></a-box>
+  <a-box position="-8 3 0" width="0.2" height="6" depth="16" color="#4b5563"></a-box>
+  <a-box position="8 3 0" width="0.2" height="6" depth="16" color="#4b5563"></a-box>
+
+  <a-text value="MEETING ROOM"
+          align="center"
+          position="0 5.3 -7.7"
+          width="8"
+          color="white">
+  </a-text>
+
+  <a-box position="0 3.25 -7.85"
+         width="6.4"
+         height="3.1"
+         depth="0.08"
+         color="#020617">
+  </a-box>
+
+  <a-plane id="meetingScreen"
+           position="0 3.25 -7.76"
+           width="6"
+           height="2.7"
+           material="shader: flat; src: #meetingVideo">
+  </a-plane>
+
+  <a-text value="VIDEO SCREEN"
+          align="center"
+          position="0 1.55 -7.65"
+          width="5"
+          color="#cbd5e1">
+  </a-text>
+
+  <a-box position="0 0.75 -1"
+         width="5"
+         height="0.25"
+         depth="2.2"
+         color="#78350f">
+  </a-box>
+
+  <a-box position="-2 0.35 -1.8" width="0.18" height="0.7" depth="0.18" color="#451a03"></a-box>
+  <a-box position="2 0.35 -1.8" width="0.18" height="0.7" depth="0.18" color="#451a03"></a-box>
+  <a-box position="-2 0.35 -0.2" width="0.18" height="0.7" depth="0.18" color="#451a03"></a-box>
+  <a-box position="2 0.35 -0.2" width="0.18" height="0.7" depth="0.18" color="#451a03"></a-box>
+
+  <a-box position="-2.2 0.45 0.7" width="0.7" height="0.25" depth="0.7" color="#1e40af"></a-box>
+  <a-box position="-2.2 0.95 1.0" width="0.7" height="0.9" depth="0.15" color="#1e40af"></a-box>
+
+  <a-box position="0 0.45 0.7" width="0.7" height="0.25" depth="0.7" color="#1e40af"></a-box>
+  <a-box position="0 0.95 1.0" width="0.7" height="0.9" depth="0.15" color="#1e40af"></a-box>
+
+  <a-box position="2.2 0.45 0.7" width="0.7" height="0.25" depth="0.7" color="#1e40af"></a-box>
+  <a-box position="2.2 0.95 1.0" width="0.7" height="0.9" depth="0.15" color="#1e40af"></a-box>
+
+  <a-box position="-2.2 0.45 -2.7" width="0.7" height="0.25" depth="0.7" color="#1e40af"></a-box>
+  <a-box position="-2.2 0.95 -3.0" width="0.7" height="0.9" depth="0.15" color="#1e40af"></a-box>
+
+  <a-box position="0 0.45 -2.7" width="0.7" height="0.25" depth="0.7" color="#1e40af"></a-box>
+  <a-box position="0 0.95 -3.0" width="0.7" height="0.9" depth="0.15" color="#1e40af"></a-box>
+
+  <a-box position="2.2 0.45 -2.7" width="0.7" height="0.25" depth="0.7" color="#1e40af"></a-box>
+  <a-box position="2.2 0.95 -3.0" width="0.7" height="0.9" depth="0.15" color="#1e40af"></a-box>
+
+  <a-light type="ambient" intensity="0.8"></a-light>
+  <a-light type="point" position="0 4 0" intensity="1.2"></a-light>
+
+</a-scene>
+
+<script>
+window.socket = io();
+window.roomName = "meeting";
+
+fetch("/me")
+  .then(res => res.json())
+  .then(user => {
+    document.getElementById("userInfo").innerHTML =
+      " " + user.name + " / " + user.role;
+  });
+
+document.querySelector("a-scene").addEventListener("loaded", () => {
+  const video = document.getElementById("meetingVideo");
+
+  video.play().catch(err => {
+    console.log("Video play blocked:", err);
+  });
+});
+</script>
+
+<script src="/js/avatars.js"></script>
+<script src="/js/chat.js"></script>
+
+</body>
+</html>
