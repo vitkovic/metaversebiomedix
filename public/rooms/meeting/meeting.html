@@ -17,6 +17,16 @@
   <span id="userInfo"> Loading...</span>
 </div>
 
+<div id="adminScreenPanel"
+     style="display:none; position:absolute; z-index:10; top:60px; left:10px; color:white; font-family:Arial; background:rgba(0,0,0,0.7); padding:8px;">
+  <label>Screen:</label>
+  <select id="screenSelector">
+    <option value="/assets/femur.mp4" data-title="Femur">Femur</option>
+    <option value="/assets/mod.mp4" data-title="Mod">Mod</option>
+  </select>
+  <button id="changeScreenBtn">Change</button>
+</div>
+
 <a-scene background="color:#111827">
 
   <a-assets>
@@ -76,7 +86,8 @@
            material="shader: flat; src: #meetingVideo">
   </a-plane>
 
-  <a-text value="VIDEO SCREEN"
+  <a-text id="screenTitle"
+          value="Femur"
           align="center"
           position="0 1.55 -7.65"
           width="5"
@@ -122,19 +133,61 @@
 window.socket = io();
 window.roomName = "meeting";
 
+let currentUser = null;
+
 fetch("/me")
   .then(res => res.json())
   .then(user => {
+    currentUser = user;
+
     document.getElementById("userInfo").innerHTML =
       " " + user.name + " / " + user.role;
+
+    if (user.role === "admin") {
+      document.getElementById("adminScreenPanel").style.display = "block";
+    }
   });
 
-document.querySelector("a-scene").addEventListener("loaded", () => {
+function playMeetingVideo() {
   const video = document.getElementById("meetingVideo");
 
   video.play().catch(err => {
     console.log("Video play blocked:", err);
   });
+}
+
+function applyMeetingScreen(screen) {
+  if (!screen || !screen.src) return;
+
+  const video = document.getElementById("meetingVideo");
+  const screenTitle = document.getElementById("screenTitle");
+
+  video.pause();
+  video.src = screen.src;
+  video.load();
+
+  screenTitle.setAttribute("value", screen.title || "Screen");
+
+  playMeetingVideo();
+}
+
+document.querySelector("a-scene").addEventListener("loaded", () => {
+  playMeetingVideo();
+});
+
+document.getElementById("changeScreenBtn").addEventListener("click", () => {
+  const selector = document.getElementById("screenSelector");
+  const selected = selector.options[selector.selectedIndex];
+
+  window.socket.emit("changeMeetingScreen", {
+    type: "video",
+    src: selector.value,
+    title: selected.dataset.title || selected.text
+  });
+});
+
+window.socket.on("meetingScreenChanged", screen => {
+  applyMeetingScreen(screen);
 });
 </script>
 

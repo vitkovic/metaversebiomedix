@@ -8,6 +8,15 @@ const textModeBtn = document.getElementById("textModeBtn");
 const customCrosshair = document.getElementById("customCrosshair");
 const player = document.getElementById("player");
 
+
+const imageBtn =
+  document.getElementById("imageBtn");
+
+const imageFile =
+  document.getElementById("imageFile");
+  
+const textInputBox = document.getElementById("textInputBox");
+
 const socket = window.socket;
 
 let drawing = false;
@@ -37,6 +46,28 @@ function showCrosshair(e) {
 function hideCrosshair() {
   customCrosshair.style.display = "none";
 }
+
+function drawImage(data) {
+
+  const img = new Image();
+
+  img.onload = () => {
+
+    ctx.drawImage(
+      img,
+      data.x,
+      data.y,
+      data.width,
+      data.height
+    );
+
+    updateBoardTexture();
+
+  };
+
+  img.src = data.image;
+}
+
 
 function updateBoardTexture() {
   const board = document.getElementById("whiteboard3d");
@@ -127,6 +158,57 @@ textModeBtn.onclick = () => {
   textModeBtn.style.background = textMode ? "#22c55e" : "";
   textModeBtn.style.color = textMode ? "white" : "";
 };
+
+
+imageBtn.onclick = () => {
+  imageFile.click();
+};
+
+imageFile.addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const img = new Image();
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    img.onload = () => {
+      const maxWidth = 700;
+      const scale = maxWidth / img.width;
+
+      const w = maxWidth;
+      const h = img.height * scale;
+
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = w;
+      tempCanvas.height = h;
+
+      const tempCtx = tempCanvas.getContext("2d");
+      tempCtx.drawImage(img, 0, 0, w, h);
+
+      const compressedImage =
+        tempCanvas.toDataURL("image/jpeg", 0.75);
+
+      const imageData = {
+        type: "image",
+        image: compressedImage,
+        x: 150,
+        y: 100,
+        width: w,
+        height: h
+      };
+
+      drawImage(imageData);
+      socket.emit("whiteboardImage", imageData);
+    };
+
+    img.src = reader.result;
+  };
+
+  reader.readAsDataURL(file);
+
+  imageFile.value = "";
+});
 
 document.querySelector("a-scene").addEventListener("loaded", () => {
   updateBoardTexture();
@@ -230,11 +312,17 @@ socket.on("whiteboardHistory", history => {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   history.forEach(item => {
+
     if (item.type === "text") {
       drawText(item);
-    } else {
+    }
+    else if (item.type === "image") {
+      drawImage(item);
+    }
+    else {
       drawLine(item);
     }
+
   });
 
   updateBoardTexture();
@@ -246,6 +334,10 @@ socket.on("whiteboardDraw", line => {
 
 socket.on("whiteboardText", data => {
   drawText(data);
+});
+
+socket.on("whiteboardImage", data => {
+  drawImage(data);
 });
 
 socket.on("whiteboardClear", () => {

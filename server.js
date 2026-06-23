@@ -5,7 +5,9 @@ const session = require("express-session");
 
 const app = express();
 const server = http.createServer(app);
-const io = require("socket.io")(server);
+const io = require("socket.io")(server, {
+  maxHttpBufferSize: 5e6
+});
 
 const sessionMiddleware = session({
   secret: "metaverse-secret-key",
@@ -18,6 +20,14 @@ const MAX_CHAT_HISTORY = 15;
 
 const whiteboardHistory = [];
 const MAX_WHITEBOARD_HISTORY = 5000;
+
+
+
+let currentMeetingScreen = {
+  type: "video",
+  src: "/assets/femur.mp4",
+  title: "Femur"
+};
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -36,7 +46,7 @@ const usersDb = [
     password: "1234",
     name: "Teacher",
     role: "teacher",
-    color: "#2563eb"
+    color: "#CC6912"
   },
   {
     username: "student",
@@ -125,6 +135,21 @@ function getUsersInRoom(roomName) {
   return usersInRoom;
 }
 
+
+function getOnlineUsers() {
+  return Object.values(connectedUsers).map(user => ({
+    name: user.name,
+    role: user.role,
+    color: user.color,
+    room: user.room
+  }));
+}
+
+function emitOnlineUsers() {
+  io.emit("onlineUsersUpdate", getOnlineUsers());
+}
+
+
 io.on("connection", socket => {
   const session = socket.request.session;
 
@@ -149,11 +174,14 @@ io.on("connection", socket => {
 
   socket.join("lobby");
 
-  //socket.emit("current-users", getUsersInRoom("lobby"));
   socket.emit("chatHistory", chatHistory);
   socket.emit("whiteboardHistory", whiteboardHistory);
+  socket.emit("meetingScreenChanged", currentMeetingScreen);
 
   socket.to("lobby").emit("user-connected", connectedUsers[socket.id]);
+  
+  
+  emitOnlineUsers();
 
   socket.on("joinRoom", roomName => {
     if (!connectedUsers[socket.id]) return;
@@ -174,6 +202,12 @@ io.on("connection", socket => {
 
     socket.emit("current-users", getUsersInRoom(newRoom));
     socket.to(newRoom).emit("user-connected", connectedUsers[socket.id]);
+	
+	emitOnlineUsers();
+
+    if (newRoom === "meeting") {
+      socket.emit("meetingScreenChanged", currentMeetingScreen);
+    }
   });
 
   socket.on("chatMessage", message => {
@@ -213,6 +247,32 @@ io.on("connection", socket => {
     socket.to(room).emit("playerMoved", connectedUsers[socket.id]);
   });
 
+  
+  socket.on("whiteboardImage", data => {
+
+    if (!connectedUsers[socket.id]) return;
+    if (!data) return;
+
+    const imageData = {
+      type: "image",
+      image: data.image,
+      x: Number(data.x) || 100,
+      y: Number(data.y) || 100,
+      width: Number(data.width) || 300,
+      height: Number(data.height) || 200
+    };
+
+    whiteboardHistory.push(imageData);
+
+    if (whiteboardHistory.length > MAX_WHITEBOARD_HISTORY) {
+      whiteboardHistory.shift();
+    }
+
+    io.emit("whiteboardImage", imageData);
+
+  });
+  
+  
   socket.on("whiteboardDraw", line => {
     if (!connectedUsers[socket.id]) return;
     if (!line) return;
@@ -265,6 +325,28 @@ io.on("connection", socket => {
 
     whiteboardHistory.length = 0;
     io.emit("whiteboardClear");
+  });
+
+  socket.on("changeMeetingScreen", screen => {
+    if (!connectedUsers[socket.id]) return;
+
+    const currentUser = connectedUsers[socket.id];
+
+    if (currentUser.role !== "admin") {
+      return;
+    }
+
+    if (!screen || !screen.src) {
+      return;
+    }
+
+    currentMeetingScreen = {
+      type: screen.type || "video",
+      src: String(screen.src),
+      title: String(screen.title || "Screen")
+    };
+
+    io.to("meeting").emit("meetingScreenChanged", currentMeetingScreen);
   });
 
   socket.on("disconnect", () => {

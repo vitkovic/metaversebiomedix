@@ -27,44 +27,44 @@
     avatar.setAttribute("position", `${user.x} 0 ${user.z}`);
     avatar.setAttribute("rotation", `0 ${user.ry} 0`);
 
-    avatar.innerHTML = `
-      <a-cylinder
-        position="0 0.8 0"
-        radius="0.28"
-        height="1.2"
-        color="${user.color}">
-      </a-cylinder>
+	avatar.innerHTML = `
+	  <a-cylinder
+	    position="0 0.55 0"
+	    radius="0.16"
+	    height="0.8"
+	    color="#6b7280">
+	  </a-cylinder>
 
-      <a-sphere
-        position="0 1.55 0"
-        radius="0.32"
-        color="#facc15">
-      </a-sphere>
+	  <a-sphere
+	    position="0 1.12 0"
+	    radius="0.18"
+	    color="${user.color}">
+	  </a-sphere>
 
-      <a-cylinder
-        position="-0.38 0.85 0"
-        radius="0.08"
-        height="0.8"
-        rotation="0 0 20"
-        color="${user.color}">
-      </a-cylinder>
+	  <a-cylinder
+	    position="-0.22 0.60 0"
+	    radius="0.04"
+	    height="0.45"
+	    rotation="0 0 25"
+	    color="#6b7280">
+	  </a-cylinder>
 
-      <a-cylinder
-        position="0.38 0.85 0"
-        radius="0.08"
-        height="0.8"
-        rotation="0 0 -20"
-        color="${user.color}">
-      </a-cylinder>
+	  <a-cylinder
+	    position="0.22 0.60 0"
+	    radius="0.04"
+	    height="0.45"
+	    rotation="0 0 -25"
+	    color="#6b7280">
+	  </a-cylinder>
 
-      <a-text
-        value="${user.name}"
-        align="center"
-        position="0 2.15 0"
-        color="white"
-        width="3">
-      </a-text>
-    `;
+	  <a-text
+	    value="${user.name}"
+	    align="center"
+	    position="0 1.55 0"
+	    color="${user.color}"
+	    width="2.5">
+	  </a-text>
+	`;
 
     document.querySelector("a-scene").appendChild(avatar);
   }
