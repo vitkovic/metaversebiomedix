@@ -245,6 +245,7 @@ io.on("connection", socket => {
     const room = connectedUsers[socket.id].room || "lobby";
 
     socket.to(room).emit("playerMoved", connectedUsers[socket.id]);
+	emitOnlineUsers();
   });
 
   
