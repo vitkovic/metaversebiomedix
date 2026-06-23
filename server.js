@@ -26,7 +26,8 @@ const MAX_WHITEBOARD_HISTORY = 5000;
 let currentMeetingScreen = {
   type: "video",
   src: "/assets/femur.mp4",
-  title: "Femur"
+  title: "Femur",
+  index: 0
 };
 
 app.use(express.urlencoded({ extended: true }));
@@ -344,12 +345,12 @@ io.on("connection", socket => {
       return;
     }
 
-    currentMeetingScreen = {
-      type: screen.type || "video",
-      src: String(screen.src),
-      title: String(screen.title || "Screen")
-    };
-
+	currentMeetingScreen = {
+	  type: screen.type || "video",
+	  src: String(screen.src),
+	  title: String(screen.title || "Screen"),
+	  index: Number(screen.index) || 0
+	};
     io.to("meeting").emit("meetingScreenChanged", currentMeetingScreen);
   });
 

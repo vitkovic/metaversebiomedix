@@ -162,6 +162,11 @@ function applyMeetingScreen(screen) {
 
   const video = document.getElementById("meetingVideo");
   const screenTitle = document.getElementById("screenTitle");
+  const selector = document.getElementById("screenSelector");
+
+  if (selector && screen.index !== undefined) {
+    selector.selectedIndex = Number(screen.index);
+  }
 
   video.pause();
   video.src = screen.src;
@@ -183,7 +188,8 @@ document.getElementById("changeScreenBtn").addEventListener("click", () => {
   window.socket.emit("changeMeetingScreen", {
     type: "video",
     src: selector.value,
-    title: selected.dataset.title || selected.text
+    title: selected.dataset.title || selected.text,
+    index: selector.selectedIndex
   });
 });
 
