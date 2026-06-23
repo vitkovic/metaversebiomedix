@@ -333,10 +333,13 @@ io.on("connection", socket => {
 
     const currentUser = connectedUsers[socket.id];
 
+	/*
     if (currentUser.role !== "admin") {
       return;
     }
 
+	*/
+	
     if (!screen || !screen.src) {
       return;
     }
